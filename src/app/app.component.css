@@ -1,0 +1,15 @@
+.container {
+    max-width: 600px;
+    margin: 20px auto;
+  }
+  
+  canvas {
+    border: 1px solid #000;
+    display: block;
+    margin-top: 10px;
+  }
+
+  .svg-container {
+    margin-top: 20px;
+  }
+  
