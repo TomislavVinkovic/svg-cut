@@ -13,10 +13,17 @@
     margin-top: 10px;
   }
 
-  #download-button {
+  #download-button-container {
     display: flex;
-    justify-content: flex-end;
+    justify-content: center;
     align-items: center;
+  }
+  #download-button {
+    font-family: Arial, 'Times New Roman', serif;
+    color: white;
+    background-color: #1d45a3;
+    padding: 30px;
+    font-size: 20px;
   }
 
   #svg-container-wrapper {

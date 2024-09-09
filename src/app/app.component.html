@@ -13,8 +13,8 @@
   </div>
   
 
-  <div *ngIf="svgContent" id="download-button">
-    <button (click)="handleDownloadSVG()">Download SVG</button>
+  <div *ngIf="svgContent" id="download-button-container">
+    <a id="download-button" (click)="handleDownloadSVG()">DOWNLOAD SVG</a>
   </div>
 
   <div [hidden]="!svgContent" id="svg-container-wrapper">
