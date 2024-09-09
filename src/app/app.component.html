@@ -2,12 +2,23 @@
   <h2>Upload SVG and Render to Canvas</h2>
   <input type="file" (change)="onFileSelected($event)" accept=".svg" />
   
-  <div *ngIf="svgContent">
+  <div [hidden]="!svgContent">
     <div [innerHTML]="svgContent"></div>
   </div>
 
-  <h3>Rendered on Canvas:</h3>
-  <canvas id="svgCanvas" width="500" height="500" style="display: none;"></canvas>
-  <canvas id="originalCanvas" width="500" height="500" style="display: none;"></canvas>
-  <div class="svg-container" #svgContainer></div>
+  <h3 [hidden]="!svgContent">Rendered on Canvas:</h3>
+  <div [hidden]="!svgContent" class="canvas-container">
+    <canvas id="svgCanvas" width="500" height="500"></canvas>
+    <canvas id="originalCanvas" width="500" height="500"></canvas>
+  </div>
+  
+
+  <div *ngIf="svgContent" id="download-button">
+    <button (click)="handleDownloadSVG()">Download SVG</button>
+  </div>
+
+  <div [hidden]="!svgContent" id="svg-container-wrapper">
+    <div class="svg-container" #svgContainer></div>
+  </div>  
+  
 </div>

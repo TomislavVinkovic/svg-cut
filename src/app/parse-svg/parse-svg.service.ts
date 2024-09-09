@@ -117,13 +117,14 @@ export class ParseSvgService {
 
     paths = this.sortByNumberOfChildren(paths);
 
+    // add some padding to the bounding box
     return {
       paths: paths,
       boundingBox: {
-        minX: minX,
-        minY: minY,
-        maxX: maxX,
-        maxY: maxY
+        minX: minX - 20,
+        minY: minY - 20,
+        maxX: maxX + 20,
+        maxY: maxY + 20
       }
     };
   }

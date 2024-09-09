@@ -1,15 +1,33 @@
-.container {
-    max-width: 600px;
+  .container {
+    max-width: 90%;
     margin: 20px auto;
+  }
+  .canvas-container {
+    display: flex;
+    flex-direction: row;
+    gap: 20px;
   }
   
   canvas {
-    border: 1px solid #000;
     display: block;
     margin-top: 10px;
   }
 
-  .svg-container {
+  #download-button {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+  }
+
+  #svg-container-wrapper {
+    width: 100%;
     margin-top: 20px;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+  }
+  .svg-container {
+    width: 50%;
   }
   

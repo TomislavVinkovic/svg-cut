@@ -209,9 +209,12 @@ export class AppComponent {
     const svgWidth = svgElement.viewBox.baseVal.width || svgElement.getAttribute('width');
     const svgHeight = svgElement.viewBox.baseVal.height || svgElement.getAttribute('height');
     if (svgWidth && svgHeight) {
-      const scaleFactor = 2;
+      const scaleFactor = 5;
       svgCanvas.width = scaleFactor*(+svgWidth);
       svgCanvas.height = scaleFactor*(+svgHeight);
+
+      svgCanvas.style.width = `${+svgWidth}px`;
+      svgCanvas.style.height = `${+svgHeight}px`;
 
       ctx.scale(scaleFactor, scaleFactor);
     }
@@ -235,9 +238,12 @@ export class AppComponent {
     const svgWidth = svgElement.viewBox.baseVal.width || svgElement.getAttribute('width');
     const svgHeight = svgElement.viewBox.baseVal.height || svgElement.getAttribute('height');
     if (svgWidth && svgHeight) {
-      const scaleFactor = 2;
+      const scaleFactor = 5;
       svgCanvas.width = scaleFactor*(+svgWidth);
       svgCanvas.height = scaleFactor*(+svgHeight);
+
+      svgCanvas.style.width = `${+svgWidth}px`;
+      svgCanvas.style.height = `${+svgHeight}px`;
 
       ctx.scale(scaleFactor, scaleFactor);
     }
@@ -281,6 +287,29 @@ export class AppComponent {
     const hexColor = `#${randomColor.toString(16).padStart(6, '0')}`;
   
     return hexColor;
+  }
+
+  handleDownloadSVG() {
+    // Get the SVG element
+    const svgElement = this.svgContainer.nativeElement.querySelector('svg');
+
+    if (svgElement) {
+      // Serialize the SVG to a string
+      const svgString = new XMLSerializer().serializeToString(svgElement);
+
+      // Create a blob of the SVG string
+      const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+
+      // Create an anchor element and trigger a download
+      const downloadLink = document.createElement('a');
+      downloadLink.href = URL.createObjectURL(blob);
+      downloadLink.download = 'image.svg'; // Set the file name
+      document.body.appendChild(downloadLink);
+      downloadLink.click(); // Trigger download
+      document.body.removeChild(downloadLink); // Remove the link after download
+    } else {
+      console.error('SVG element not found!');
+    }
   }
 
 }
