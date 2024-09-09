@@ -41,14 +41,14 @@ export class AppComponent {
         this.svgContent = svgString;  // Display the SVG
 
         // Render the SVG paths on the canvas
-        this.renderSVGOnCanvas(svgString);
+        this.prepareCanvas(svgString);
       };
 
       reader.readAsText(file);
     }
   }
 
-  public renderSVGOnCanvas(svgString: string): void {
+  public prepareCanvas(svgString: string): void {
     // Create a new DOMParser to parse the SVG string
     const parser = new DOMParser();
     const svgDoc = parser.parseFromString(svgString, 'image/svg+xml');
@@ -62,20 +62,21 @@ export class AppComponent {
 
     // Get the paths from the SVG
     const paths = svgElement.querySelectorAll('path');
-
-    // i will need this for checks later
+    // needed for line color checks
     const logoFillColor = paths[0].getAttribute('fill');
 
     // paths that I will extract from the single path element in the logo
     let pathElements: Path[] = [];
     let boundingBox: BoundingBox = { minX: 0, minY: 0, maxX: 0, maxY: 0 };
 
+    // if there are multiple path elements, combine them into a single path
     let combindedPathData = '';
     paths.forEach(pathElement => {
       const pathData = pathElement.getAttribute('d') || '';
       combindedPathData += pathData;
     });
 
+    // get the paths and bounding box from the combined path data
     if(combindedPathData) {
       let pathsWithBoundingBox = this.parseSvgService.parseSvg(combindedPathData);
       pathElements = pathsWithBoundingBox.paths;
@@ -85,88 +86,44 @@ export class AppComponent {
     // Set up the canvas
     const svgCanvas = document.getElementById('svgCanvas') as HTMLCanvasElement;
     const ctx = svgCanvas.getContext('2d');
-    if (!ctx) {
-      console.error('Canvas 2D context not available.');
-      return;
-    }
 
     // DRAW 1: DRAW THE LOGO IN RANDOM COLORS FOR SEGMENTATION
-    // Get SVG dimensions from viewBox or width/height
-    const svgWidth = svgElement.viewBox.baseVal.width || svgElement.getAttribute('width');
-    const svgHeight = svgElement.viewBox.baseVal.height || svgElement.getAttribute('height');
-    if (svgWidth && svgHeight) {
-      const scaleFactor = 2;
-      svgCanvas.width = scaleFactor*(+svgWidth);
-      svgCanvas.height = scaleFactor*(+svgHeight);
+    this.renderSegmentedCanvas(svgElement, svgCanvas, ctx);
+    this.renderImageSegments(pathElements, ctx!);  
 
-      ctx.scale(scaleFactor, scaleFactor);
-    }
-
-    // Clear the canvas before rendering
-    ctx.clearRect(0, 0, svgCanvas.width, svgCanvas.height);
-
-    // Function to draw each path on the canvas
-    const drawPathOnCanvas = (
-      pathData: string, 
-      fillColor: string, 
-      strokeColor: string,
-      ctx: CanvasRenderingContext2D
-    ) => {
-      const path = new Path2D(pathData);
-      ctx.fillStyle = fillColor;
-      ctx.fill(path);
-      ctx.strokeStyle = strokeColor;
-      ctx.stroke(path);
-    };
-
-    function getRandomHexColor() {
-      // Generate a random integer between 0 and 0xFFFFFF (decimal 16777215)
-      const randomColor = Math.floor(Math.random() * 0xFFFFFF);
-    
-      // Convert the integer to a hexadecimal string and pad with leading zeros if needed
-      const hexColor = `#${randomColor.toString(16).padStart(6, '0')}`;
-    
-      return hexColor;
-    }
-
-    const imageSegments: ImageSegment[] = [];
-
-    // Draw the paths with randomly assigned colors to the canvas
-    // this is used for segmentation, because every path will have its
-    // unique fill color
-    pathElements.forEach(pathElement => {
-      const pathData = pathElement.toDOMElement(2).getAttribute('d') || '';
-      const fillColor = getRandomHexColor();
-      imageSegments.push({ path: pathElement, color: fillColor });
-      const strokeColor = 'none';
-
-      drawPathOnCanvas(pathData, fillColor, strokeColor, ctx);
-    });
-
+    // GET IMAGE SEGMENTS FROM THE COLORED IMAGE
+    let imageSegments = this.renderImageSegments(pathElements, ctx!);
 
     // DRAW 2: DRAW THE LOGO IN THE ORIGINAL COLORS ON THE SECOND CANVAS
     // Set up the canvas
     const svgCanvasOriginal = document.getElementById('originalCanvas') as HTMLCanvasElement;
     const ctxOriginal = svgCanvasOriginal.getContext('2d');
-    if (!ctxOriginal) {
-      console.error('Canvas 2D context not available.');
-      return;
-    }
+    this.renderOriginalCanvas(svgElement, svgCanvasOriginal, ctxOriginal, combindedPathData, logoFillColor!);  
 
+    this.getOutlineColors(
+      ctx!, 
+      svgCanvas, 
+      ctxOriginal!, 
+      svgCanvasOriginal, 
+      imageSegments, 
+      logoFillColor!
+    );
 
-    let scaleFactor = 2;
-    svgCanvasOriginal.width = scaleFactor*(+svgWidth!);
-    svgCanvasOriginal.height = scaleFactor*(+svgHeight!);
-    ctxOriginal.scale(scaleFactor, scaleFactor);
+    this.renderOutlineSvg(imageSegments.map(segment => segment.path), boundingBox);
+  }
 
-
-   
-    
-    drawPathOnCanvas(combindedPathData, logoFillColor!, 'none', ctxOriginal);
+  getOutlineColors(
+    ctx: CanvasRenderingContext2D,
+    segmentedCanvas: HTMLCanvasElement,
+    ctxOriginal: CanvasRenderingContext2D,
+    originalCanvas: HTMLCanvasElement,
+    imageSegments: ImageSegment[],
+    logoFillColor: string,
+  ) {
 
     // get the pixel data from both canvases
-    const imageData = ctx.getImageData(0, 0, svgCanvas.width, svgCanvas.height);
-    const imageDataOriginal = ctxOriginal.getImageData(0, 0, svgCanvasOriginal.width, svgCanvasOriginal.height);
+    const imageData = ctx!.getImageData(0, 0, segmentedCanvas.width, segmentedCanvas.height);
+    const imageDataOriginal = ctxOriginal!.getImageData(0, 0, originalCanvas.width, originalCanvas.height);
 
     // for each path, find the first pixel on the randomly colored canvas that matches its fill color
     // and then color the corresponding pixel on the original canvas with the original fill color
@@ -204,8 +161,91 @@ export class AppComponent {
       }
 
     }
+  }
+  renderImageSegments(pathElements: Path[], ctx: CanvasRenderingContext2D) {
+    const imageSegments: ImageSegment[] = [];
 
-    this.renderOutlineSvg(imageSegments.map(segment => segment.path), boundingBox);
+    // Draw the paths with randomly assigned colors to the canvas
+    // this is used for segmentation, because every path will have its
+    // unique fill color
+    pathElements.forEach(pathElement => {
+      const pathData = pathElement.toDOMElement(2).getAttribute('d') || '';
+      const fillColor = this.getRandomHexColor();
+      imageSegments.push({ path: pathElement, color: fillColor });
+      const strokeColor = 'none';
+
+      this.drawPathOnCanvas(pathData, fillColor, strokeColor, ctx);
+    });
+
+    return imageSegments;
+  }
+
+  drawPathOnCanvas (
+    pathData: string, 
+    fillColor: string, 
+    strokeColor: string,
+    ctx: CanvasRenderingContext2D
+  ) {
+    const path = new Path2D(pathData);
+    ctx.fillStyle = fillColor;
+    ctx.fill(path);
+    ctx.strokeStyle = strokeColor;
+    ctx.stroke(path);
+  };
+
+  renderOriginalCanvas(
+    svgElement: SVGSVGElement, 
+    svgCanvas: HTMLCanvasElement,
+    ctx: CanvasRenderingContext2D | null,
+    combinedPathData: string,
+    logoFillColor: string,
+
+  ) {
+    if (!ctx) {
+      console.error('Canvas 2D context not available.');
+      return;
+    }
+
+    const svgWidth = svgElement.viewBox.baseVal.width || svgElement.getAttribute('width');
+    const svgHeight = svgElement.viewBox.baseVal.height || svgElement.getAttribute('height');
+    if (svgWidth && svgHeight) {
+      const scaleFactor = 2;
+      svgCanvas.width = scaleFactor*(+svgWidth);
+      svgCanvas.height = scaleFactor*(+svgHeight);
+
+      ctx.scale(scaleFactor, scaleFactor);
+    }
+
+    // Clear the canvas before rendering
+    ctx.clearRect(0, 0, svgCanvas.width, svgCanvas.height);
+
+    this.drawPathOnCanvas(combinedPathData, logoFillColor!, 'none', ctx);
+  }
+  renderSegmentedCanvas(
+    svgElement: SVGSVGElement, 
+    svgCanvas: HTMLCanvasElement,
+    ctx: CanvasRenderingContext2D | null
+  ) {
+
+    if (!ctx) {
+      console.error('Canvas 2D context not available.');
+      return;
+    }
+
+    const svgWidth = svgElement.viewBox.baseVal.width || svgElement.getAttribute('width');
+    const svgHeight = svgElement.viewBox.baseVal.height || svgElement.getAttribute('height');
+    if (svgWidth && svgHeight) {
+      const scaleFactor = 2;
+      svgCanvas.width = scaleFactor*(+svgWidth);
+      svgCanvas.height = scaleFactor*(+svgHeight);
+
+      ctx.scale(scaleFactor, scaleFactor);
+    }
+
+    // Clear the canvas before rendering
+    ctx.clearRect(0, 0, svgCanvas.width, svgCanvas.height);
+
+    // render the paths with random colors
   }
 
   // find the svg element in the template and render
@@ -230,9 +270,17 @@ export class AppComponent {
 
     svgElement.innerHTML = svgDoc.outerHTML;
   }
-
   rgbToHex(r: number, g: number, b: number) {
     return '#' + rgbHex(r, g, b);
+  }
+  getRandomHexColor() {
+    // Generate a random integer between 0 and 0xFFFFFF (decimal 16777215)
+    const randomColor = Math.floor(Math.random() * 0xFFFFFF);
+  
+    // Convert the integer to a hexadecimal string and pad with leading zeros if needed
+    const hexColor = `#${randomColor.toString(16).padStart(6, '0')}`;
+  
+    return hexColor;
   }
 
 }
