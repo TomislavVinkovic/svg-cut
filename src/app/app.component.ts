@@ -131,6 +131,22 @@ export class AppComponent {
     const originalPixelData = imageDataOriginal.data;
 
     for(const segment of imageSegments) {
+
+      // check if the segment (its path) has another path inside
+      // if it does, it is not a segment of the logo
+      let containsSegment = false;
+      for(const otherSegment of imageSegments) {
+        if(segment.path != otherSegment.path) {
+          if(this.parseSvgService.isPathInside(segment.path, otherSegment.path)) {
+            segment.path.stroke = '#FF0000';
+            containsSegment = true;
+            break;
+          }
+        }
+      }
+      if(containsSegment) {
+        continue;
+      }
       const {red, green, blue} = hexRgb(segment.color);
 
       for(let i = 0; i < pixelData.length; i += 4) {

@@ -161,12 +161,12 @@ export class ParseSvgService {
     const parentPoints = this.pathToPoints(parent);
 		const childPoints = this.pathToPoints(child);
 	
-			// Check if all points of the smaller path are inside the main path
-			const allPointsInside = childPoints.every(point => this.isPointInPath(point, parentPoints));
-	
-			if (allPointsInside) {
-				return true;
-			}
+    // Check if all points of the smaller path are inside the main path
+    const allPointsInside = childPoints.every(point => this.isPointInPath(point, parentPoints));
+
+    if (allPointsInside) {
+      return true;
+    }
 		return false;
   }
 
